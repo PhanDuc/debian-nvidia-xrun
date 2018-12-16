@@ -1,100 +1,65 @@
-# nvidia-xrun
-These utility scripts aim to make the life easier for nvidia cards users.
-It started with a revelation that bumblebee in current state offers very poor performance. This solution offers a bit more complicated procedure but offers a full GPU utilization(in terms of linux drivers)
+# nvidia-xrun for Debian Tested on Lenovo Yoga
 
-## Usage: 
-  1. switch to free tty
-  1. login
-  1. run `nvidia-xrun [app]`
-  1. enjoy
+So this is just a fork of the original script, Adapted So that it works for Debian 9. 
+I've only tested this on my machine. Which is a Lenovo YOGA.
+This Readme describes a step process of how to get this working. and some scripts
 
-Currently sudo is required as the script needs to wake up GPU, modprobe the nvidia driver and perform cleanup afterwards. For this we use bbswitch.
+My nvidia card is NVIDIA Corporation GP107M [GeForce GTX 1050 Mobile] 
 
-## Structure
-* **nvidia-xrun** - uses following dir structure:
-* **/usr/bin/nvidia-xrun** - the executable script
-* **/etc/X11/nvidia-xorg.conf** - the main X confing file
-* **/etc/X11/xinit/nvidia-xinitrc** - xinitrc config file. Contains the setting of provider output source
-* **/etc/X11/xinit/nvidia-xinitrc.d** - custom xinitrc scripts directory
-* **/etc/X11/nvidia-xorg.conf.d** - custom X config directory
-* **/usr/share/xsessions/nvidia-xrun-openbox.desktop** - xsession file for openbox
-* **/usr/share/xsessions/nvidia-xrun-plasma.desktop** - xsession file for plasma
-* **[OPTIONAL] ~/.nvidia-xinitrc** - user-level custom xinit script file. You can put here your favourite window manager for example
+## Add Debian Stretch backports: 
+ 1. `sudo echo "deb http://httpredir.debian.org/debian stretch-backports main contrib non-free" >> /etc/apt/sources.list`
+ 1. `sudo apt-get update`
+ 
+## Install the Kernel sources for your kernel
+ 
+`apt-get install linux-headers-$(uname -r|sed 's/[^-]*-[^-]*-//')`
 
+Or if you are using a backports kernel as i am (needed for my touchpad)
 
-## Setting the right bus id
-Usually the 1:0:0 bus is correct. If this is not your case(you can find out through lspci or bbswitch output mesages) you can create
-a conf script for example `nano /etc/X11/nvidia-xorg.conf.d/30-nvidia.conf` to set the proper bus id:
+`apt-get install -t stretch-backports linux-headers-$(uname -r|sed 's/[^-]*-[^-]*-//')`
 
-    Section "Device"
-        Identifier "nvidia"
-        Driver "nvidia"
-        BusID "PCI:2:0:0"
-    EndSection
+## Install the nvidia-driver
 
-You can use this command to get the bus id:
-    
-	lspci | grep -i nvidia | awk '{print $1}'
-    
-Also this way you can adjust some nvidia settings if you encounter issues:
+`apt-get install -t stretch-backports nvidia-driver`
+   
+## Install bumblebee and Ia32 support
 
-    Section "Screen"
-        Identifier "nvidia"
-        Device "nvidia"
-        #  Option "AllowEmptyInitialConfiguration" "Yes"
-        #  Option "UseDisplayDevice" "none"
-    EndSection
-    
-## Automatically run window manager
-For convenience you can create `nano ~/.nvidia-xinitrc` and put there your favourite window manager:
+`sudo apt-get install bumblebee-nvidia primus`
 
-    if [ $# -gt 0 ]; then
-        $*
-    else
-        openbox-session
-    #   startkde
-    fi
+`sudo dpkg --add-architecture i386 && sudo apt-get update && sudo apt-get install -t stretch-backports bumblebee-nvidia primus primus-libs:i386 libgl1-nvidia-glx:i386`
 
-    
-With this you do not need to specify the app and you can simply run:
+## Add your user to bumblebee
 
-    nvidia-xrun
-    
-## Aur package
-The aur package can be found here: https://aur.archlinux.org/packages/nvidia-xrun/
+`sudo gpasswd -a $USER bumblebee`
 
-## COPR Repo for Fedora 27+
-### To Install from COPR
-* `dnf copr enable axeld/nvidia-xrun`
-* `dnf install nvidia-xrun`
+## Run just-copy Script
 
-## OBS Repo for OpenSUSE, Fedora 27+ and RHEL7
-The OBS Repo can be found [here](https://software.opensuse.org//download.html?project=home%3AAxelSilverdew&package=nvidia-xrun)
+run the `./just-copy.sh` script. Or follow the steps in the script
 
+## Reboot and Sanity Checking
+If everything went well reboot. After the computer boots you should be able to use X with your normal Intel driver. but you need to check if bumblebee works as expected. On a console type
+`optirun glxgears -info`
 
-## Troubleshooting
-### Steam issues
-Yes unfortunately running Steam directly with nvidia-xrun does not work well - I recommend to use some window manager like openbox.
+That should run glxgears using your nvidia card. With a poor performance, but in a way confirms you are on the right track
+`lsmod | grep nvidia` should show the nvidia kernel module is there as well
 
-### HiDPI issue
-When using openbox on a HiDPI (i.e. 4k) display, everything could be so small that is difficult to read.
-To fix, you can change the DPI settings in `~/.Xresources (~/.Xdefaults)` file by adding/changing `Xft.dpi` setting. For example :
+## Testing installation
+CTRL+SHIFT+F2 Will take you to another tty. We want to disable display manager (Asuming you are using sddm)
+So stop your display manager `systemctl stop sddm`
 
-```
-Xft.dpi: 192
-```
+if using kde you want the script to start kde when runned so
+`echo startkde > ~/.nvidia-xinitrc`
+That will start kde when running the nvidia script. Anyway lets test it :
+Typing `nvidia-xrun` Should run X with your drivers enabled.
 
-### `nouveau` driver conflict
-`nouveau` driver should be automatically blacklisted by `nvidia` but in case it is not, `nvidia` might not get access to GPU. Then you need to manually blacklist `nouveau` following Arch wiki https://wiki.archlinux.org/index.php/kernel_modules#Blacklisting.
+## Finalizing Installation
+If everything works run `glxgears -info` You should see much much better performance than before.
+exit X by logging out and run `systemctl disable sddm` So that sddm does not start at boottime.
 
-### avoid `nvidia` driver to load on boot
-`nvidia` driver may load itself on boot, then `nvidia-xrun` will fail to start Xorg session.
-To avoid that, you should blacklist it (see link above).
-Also sometimes, blacklisting is not enough and you should use some hack to really avoid it to load.
-For example, adding `install nvidia /bin/false` to `/etc/modprobe.d/nvidia.conf` will make every load to fail.
-In that case, you should add `--ignore-install` to `modprobe` calls in `nvidia-xrun` script.
+## Summary
+To run with the intel card run `startx`
+To run with the nvidia card run `nvidia-xrun`
 
-### Vulkan does not work
-Check https://wiki.archlinux.org/index.php/Vulkan
-* remove package vulkan-intel 
-* set VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+Hope this helps someone. If you run into any issues look at the original project. 
+https://github.com/Witko/nvidia-xrun
+
