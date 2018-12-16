@@ -30,7 +30,7 @@ if [ "$1" == "-d" ]
 fi
 
 # calculate current VT
-LVT=`fgconsole`
+LVT=`sudo fgconsole`
 
 # calculate first usable display
 XNUM="-1"
@@ -67,7 +67,7 @@ fi
 
 EXECL="/etc/X11/xinit/nvidia-xinitrc $EXECL"
 
-COMMAND="xinit $EXECL -- $NEWDISP vt$LVT -nolisten tcp -br -config nvidia-xorg.conf -configdir nvidia-xorg.conf.d"
+COMMAND="startx $EXECL -- $NEWDISP vt$LVT -background none -noreset -keeptty -verbose 7 -config nvidia-xorg.conf"
 
 # --------- TURNING ON GPU -----------
 echo 'Waking up nvidia GPU'
