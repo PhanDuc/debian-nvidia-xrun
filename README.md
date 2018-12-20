@@ -7,7 +7,7 @@ This Readme describes a step process of how to get this working. and some script
 My nvidia card is NVIDIA Corporation GP107M [GeForce GTX 1050 Mobile] 
 
 ## Add Debian Stretch backports: 
- 1. `sudo echo "deb http://httpredir.debian.org/debian stretch-backports main contrib non-free" >> /etc/apt/sources.list`
+ 1. `echo "deb http://httpredir.debian.org/debian stretch-backports main contrib non-free" | sudo tee --append /etc/apt/sources.list > /dev/null`
  1. `sudo apt-get update`
  
 ## Install the Kernel sources for your kernel
